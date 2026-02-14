@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>💌 Whisper Gallery</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #ff9a9e 0%, #fad0c4 100%);
+            min-height: 100vh;
+            color: #fff;
+            padding: 40px 20px;
+            box-sizing: border-box;
+        }
+
+        .gallery-container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 40px;
+            position: relative;
+            justify-content: center;
+        }
+
+        h1 {
+            font-family: "Cursive", sans-serif;
+            font-size: 3em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+            margin: 0;
+        }
+
+        .back-btn {
+            position: absolute;
+            left: 0;
+            text-decoration: none;
+            color: white;
+            background: rgba(255, 255, 255, 0.25);
+            padding: 10px 25px;
+            border-radius: 30px;
+            backdrop-filter: blur(5px);
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .whisper-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 25px;
+        }
+
+        .whisper-card {
+            background: rgba(0, 0, 0, 0.5);
+            /* darker background */
+            backdrop-filter: blur(15px);
+            padding: 25px;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            /* stronger shadow */
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            color: #f8f8f8;
+            /* slightly off-white for better readability */
+        }
+
+        .whisper-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+            background: rgba(0, 0, 0, 0.6);
+            /* slightly darker on hover */
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding-bottom: 10px;
+        }
+
+        .nickname {
+            font-weight: 700;
+            font-size: 1.2em;
+            color: #fff;
+        }
+
+        .timestamp {
+            font-size: 0.85em;
+            color: #f0f0f0;
+            opacity: 0.9;
+        }
+
+        .message-body {
+            font-size: 1.05em;
+            line-height: 1.6;
+            color: #f8f8f8;
+            /* matches card text for readability */
+        }
+
+        .empty-state {
+            text-align: center;
+            grid-column: 1 / -1;
+            background: rgba(255, 255, 255, 0.15);
+            padding: 50px;
+            border-radius: 20px;
+            font-size: 1.2em;
+        }
+
+        @media (max-width: 600px) {
+            header {
+                flex-direction: column;
+                gap: 20px;
+            }
+
+            .back-btn {
+                position: static;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="gallery-container">
+        <header>
+            <a href="index.html" class="back-btn">← Back</a>
+            <h1>Secret Whispers</h1>
+        </header>
+
+        <div id="whisper-grid" class="whisper-grid">
+            <div class="empty-state">Listening for whispers...</div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <script>
+        const supabaseUrl = "https://egqdowrgdrytpbxailpx.supabase.co";
+        const supabaseKey =
+            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVncWRvd3JnZHJ5dHBieGFpbHB4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEwMDkyMzUsImV4cCI6MjA4NjU4NTIzNX0.kuNqZ5CGiuZhDu43zjVvBhi67tJPWxCtQe8wv2AFRyk";
+        const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        async function loadAllWhispers() {
+            const { data, error } = await supabaseClient
+                .from("whispers")
+                .select("*")
+                .order("created_at", { ascending: false });
+
+            const grid = document.getElementById("whisper-grid");
+
+            if (error) {
+                console.error(error);
+                grid.innerHTML = '<div class="empty-state">Failed to load whispers :(</div>';
+                return;
+            }
+
+            if (!data || data.length === 0) {
+                grid.innerHTML = '<div class="empty-state">No whispers yet. Send one!</div>';
+                return;
+            }
+
+            grid.innerHTML = data
+                .map((w) => {
+                    const date = new Date(w.created_at).toLocaleDateString(undefined, {
+                        month: 'short', day: 'numeric',
+                        hour: '2-digit', minute: '2-digit'
+                    });
+                    const safeNickname = w.nickname ? w.nickname.replace(/</g, "&lt;") : "Anonymous";
+                    const safeMessage = w.message.replace(/</g, "&lt;");
+
+                    return `
+            <div class="whisper-card">
+              <div class="card-header">
+                <span class="nickname">${safeNickname}</span>
+                <span class="timestamp">${date}</span>
+              </div>
+              <div class="message-body">${safeMessage}</div>
+            </div>
+          `})
+                .join("");
+        }
+
+        loadAllWhispers();
+
+        // Realtime subscription
+        supabaseClient
+            .channel('public:whispers')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'whispers' }, (payload) => {
+                console.log('New whisper received!', payload);
+                loadAllWhispers();
+            })
+            .subscribe();
+    </script>
+</body>
+
+</html>
